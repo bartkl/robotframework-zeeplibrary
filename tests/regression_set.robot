@@ -6,8 +6,8 @@ Library  XML  use_lxml=${TRUE}
 
 
 *** Variables ***
-${CALCULATOR WSDL}  ${CURDIR}${/}..${/}calculator.wsdl
-${BLZSERVICE WSDL}  ${CURDIR}${/}..${/}blzservice.wsdl
+${CALCULATOR WSDL}  ${CURDIR}${/}calculator.wsdl
+${BLZSERVICE WSDL}  ${CURDIR}${/}blzservice.wsdl
 
 
 
@@ -79,7 +79,7 @@ Namespace trickery
 Creating a simple message as XML
     Create client  ${CALCULATOR WSDL}
 
-    ${message}=  Create message  Add
+    ${message}=  Create message  Add  to_string=${FALSE}
     ...  a=${10}
     ...  b=${20}
 
@@ -89,7 +89,7 @@ Creating a simple message as XML
 Creating a simple message as string
     Create client  ${CALCULATOR WSDL}
 
-    ${message}=  Create message  Add  to_string=${TRUE}
+    ${message}=  Create message  Add
     ...  a=${10}
     ...  b=${20}
 
@@ -120,7 +120,7 @@ Creating a more complicated message as XML
     ${blz}=  Create object  ns0:getBankType
     ...  blz=1234
 
-    ${message}=  Create message  getBank
+    ${message}=  Create message  getBank  to_string=${FALSE}
     ...  blz=${blz}
 
     Should be true  '${message.__class__.__name__}' == '_Element'
@@ -137,7 +137,7 @@ Creating a more complicated message as string
     ${blz}=  Create object  ns0:getBankType
     ...  blz=1234
 
-    ${message}=  Create message  getBank  to_string=${TRUE}
+    ${message}=  Create message  getBank
     ...  blz=${blz}
 
     Should start with  ${message}  <soap-env:Envelope

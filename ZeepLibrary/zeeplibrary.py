@@ -42,7 +42,7 @@ class ZeepLibrary:
     seemed time to write a library to enable Robot Framework to use Zeep.
     """
 
-    __version__ = 0.2
+    __version__ = 0.3
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
 
     def __init__(self):
@@ -111,7 +111,7 @@ class ZeepLibrary:
         return client
 
     @keyword('Create message')
-    def create_message(self, operation, to_string=False, **kwargs):
+    def create_message(self, operation, to_string=True, **kwargs):
         message = self.active_client.create_message(\
             self.active_client.service,
             operation,
