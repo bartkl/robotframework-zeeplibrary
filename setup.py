@@ -1,7 +1,7 @@
 import setuptools
 
 setuptools.setup(
-    name="robotframework-excellentlibrary",
+    name="robotframework-zeeplibrary",
     version="0.3",
     author="Bart Kleijngeld",
     author_email="bartkl@gmail.com",
