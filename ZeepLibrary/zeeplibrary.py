@@ -228,8 +228,6 @@ class ZeepLibrary:
                 message = self.create_message(operation, **kwargs)
                 headers, body = self\
                     ._build_transport_for_multipart_message(message, xop=xop)
-                # if debug:
-                    # logger.warn(body)
                 return original_post_method(address, body, headers)
             
             self.active_client.transport.post = post_with_attachments
@@ -250,9 +248,11 @@ class ZeepLibrary:
             root = MIMEMultipart('related',
                                  type='text/xml',
                                  start='<message>')
-            message_part = MIMEText(message, 'xml', 'utf8')
+            message_part = MIMEBase('text', 'xml')
+            message_part.set_charset('UTF-8')
+            message_part.set_payload(message)
+            message_part.replace_header('Content-Transfer-Encoding', '8bit')
 
-        message_part.set_charset('UTF-8')
         message_part.add_header('Content-ID', '<message>')
         root.attach(message_part)
         
@@ -261,25 +261,23 @@ class ZeepLibrary:
             maintype, subtype = attachment['mimetype']
 
             if maintype == 'image':
-                attached_part = MIMEImage(attachment['contents'], subtype, encode_noop)
+                attached_part = MIMEImage(attachment['contents'], subtype, encode_noop, name=attachment['filename'])
                 attached_part.add_header('Content-Transfer-Encoding', 'binary')
             elif maintype == 'application':
-                attached_part = MIMEApplication(attached_part['contents'], subtype)
+                attached_part = MIMEApplication(attachment['contents'], subtype)
             elif maintype == 'text':
-                attached_part = MIMEText(attached_part['contents'], subtype, 'utf8')
+                attached_part = MIMEText(attachment['contents'], subtype, 'utf8')
 
             attached_part.add_header('Content-ID', '<{}>'\
                                      .format(attachment['filename']))
-            attached_part.add_header('Content-Disposition', 'attachment', filename=attachment['filename'], name=attachment['filename'])
-            attached_part.add_header('filename', attachment['filename'])   # TODO: Is this necessary; what is it; can it be done more elegantly?
-            attached_part.add_header('name', attachment['filename'])  # TODO: Is this necessary; what is it; can it be done more elegantly?
-
+            attached_part.add_header('Content-Disposition', 'attachment', name=attachment['filename'], filename=attachment['filename'])
             root.attach(attached_part)
 
         body = root.as_string().split('\n\n', 1)[1]  # TODO: Is this necessary; what is it; can it be done more elegantly?
         body = body.replace("<ns0:Bestandsdata>MQ==</ns0:Bestandsdata>", '<ns0:Bestandsdata><inc:Include href="cid:Handtekening.jpg" xmlns:inc="http://www.w3.org/2004/08/xop/include"/></ns0:Bestandsdata>')
         headers = dict(root.items())
-
+        # logger.warn(headers)
+        # logger.warn(body)
         return headers, body
 
 
