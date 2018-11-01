@@ -1,10 +1,21 @@
-import logging
+import os
 import zeep
 import requests
 import requests.auth
+from requests import Session
 from robot.api import logger
 from robot.api.deco import keyword
 from lxml import etree
+from zeep import Client
+from zeep.transports import Transport
+import mimetypes
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+import base64
+
+
+
 
 
 class ZeepLibraryException(Exception):
@@ -105,9 +116,14 @@ class ZeepLibrary:
             session.auth = requests.auth.HTTPBasicAuth(auth[0], auth[1])
         transport = zeep.transports.Transport(session=session)
 
-        client = zeep.Client(wsdl, transport=transport)
-        self._add_client(client, alias)
+        # def myfunc(address, message, header):
+            # print hello
+        # transport.post = myfunc
 
+        client = zeep.Client(wsdl, transport=transport)
+        client.attachments = []
+
+        self._add_client(client, alias)
         return client
 
     @keyword('Create message')
@@ -179,6 +195,90 @@ class ZeepLibrary:
 
         return current_active_client_alias
 
+    @keyword('Add attachment')
+    def add_attachment(self,
+                       filepath,
+                       filename=None,
+                       mimetype=None,
+                       binary=True):
+        if not filename:
+            filename = os.path.basename(filepath)
+
+        if not mimetype:
+            mimetype = _guess_mimetype(filename)
+
+        if binary:
+            file_mode = 'rb'
+        else:
+            file_mode = 'rt'
+
+        with open(filepath, file_mode) as f:
+            contents = f.read()
+
+        attachment = {
+            'filename': filename,
+            'contents': contents,
+            'mimetype': mimetype
+        }
+        self.active_client.attachments.append(attachment)
+
+    @keyword('Call operation')
+    def call_operation(self, operation, xop=False, **kwargs):
+        if self.active_client.attachments:
+            def post_with_attachments(address, body, headers):
+                message = self.create_message(operation, **kwargs)
+                headers, body = self\
+                    ._build_transport_for_multipart_message(message, xop=xop)
+                response = Transport().post(address, body, headers)
+                return response
+            self.active_client.transport.post = post_with_attachments
+        
+        operation_method = getattr(self.active_client.service, operation)
+        return operation_method(**kwargs)
+
+    def _build_transport_for_multipart_message(self, message, xop=False):
+        if xop:
+            root = MIMEMultipart('related',
+                                 type="application/xop+xml",
+                                 start="<message>")
+            message_part = MIMEBase('application', 'xop+xml',
+                                    type='text/xml',
+                                    encoding='utf8')
+        else:
+            root = MIMEMultipart('related',
+                                 type="text/xml",
+                                 start="<message>")
+            message_part = MIMEText('text', 'xml', 'utf8')
+
+        message_part.add_header('Content-ID', '<message>')
+        message_part.set_payload(message)
+        _add_or_replace_mime_header(message_part,
+                                    'Content-Transfer-Encoding',
+                                    '8bit')
+        root.attach(message_part)
+        
+        for attachment in self.active_client.attachments:
+            attached_part = None
+            maintype, subtype = attachment['mimetype']
+            attached_part = MIMEBase(maintype, subtype)
+            attached_part.set_payload(attachment['contents'])
+            attached_part.add_header('Content-Transfer-Encoding', 'binary')
+            attached_part.add_header('Content-ID', '<{}>'\
+                                     .format(attachment['filename']))
+            attached_part.add_header('Content-Disposition', 'attachment', name=attachment['filename'])
+            attached_part.add_header('filename', attachment['filename'])   # TODO: Is this necessary; what is it; can it be done more elegantly?
+            attached_part.add_header('name', attachment['filename'])  # TODO: Is this necessary; what is it; can it be done more elegantly?
+            root.attach(attached_part)
+
+        body = root.as_string().split('\n\n', 1)[1]  # TODO: Is this necessary; what is it; can it be done more elegantly?
+        body = body.replace("<ns0:Bestandsdata>MQ==</ns0:Bestandsdata>", '<ns0:Bestandsdata><inc:Include href="cid:Handtekening.jpg" xmlns:inc="http://www.w3.org/2004/08/xop/include"/></ns0:Bestandsdata>')
+        headers = dict(root.items())
+
+        req = requests.Request('post', 'http://mwaosb61.rdc.local:7110/GSAOperatie/PS_Slimmemeters_v1', data=body, headers=headers)
+        logger.warn(_prettify_request(req))
+
+        return headers, body
+
 
 # Utility functions.
 def _log(item, to_log=True, to_console=False):
@@ -186,3 +286,40 @@ def _log(item, to_log=True, to_console=False):
         logger.info(item, also_console=to_console)
     elif to_console:
         logger.console(item)
+
+def _guess_mimetype(filename):
+    # Credits: https://docs.python.org/2/library/email-examples.html
+    ctype, encoding = mimetypes.guess_type(filename)
+    if ctype is None or encoding is not None:
+        # No guess could be made, or the file is encoded (compressed), so
+        # use a generic bag-of-bits type.
+        ctype = 'application/octet-stream'
+    maintype, subtype = ctype.split('/', 1)
+
+    return maintype, subtype
+
+def _prettify_request(request, hide_auth=True):
+        """Pretty prints the request for the supplied `requests.Request`
+        object. Especially useful after having performed the request, in
+        order to inspect what was truly sent. To access the used request
+        on the `requests.Response` object use the `request` attribute.
+        """
+        if hide_auth:
+            logger.warn("Hiding the `Authorization' header for security reasons. If you wish to display it anyways, pass `hide_auth=True`.")
+        result = ('{}\n{}\n{}\n\n{}{}'.format(
+            '----------- REQUEST BEGIN -----------',
+            request.method + ' ' + request.url,
+            '\n'.join('{}: {}'.format(key, value) for key, value in request.headers.items() if not(key == 'Authorization' and hide_auth)),
+            request.data,
+            "\n"
+            '------------ REQUEST END ------------'
+        ))
+        return result
+
+def _add_or_replace_mime_header(mime_object, key, value):
+    if key in mime_object.keys():
+        mime_object.replace_header(key, value)
+    else:
+        mime_object.add_header(key, value)
+
+
