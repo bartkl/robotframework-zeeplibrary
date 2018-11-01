@@ -225,7 +225,7 @@ Call method
     ...  Nummer=1
     ...  Stand=0
     ${nieuwe meter}=  ZeepLibrary.Create object  ns2:MeterType
-    ...  Meternummer=XXXX
+    ...  Meternummer=XXXXé🎧
     ...  Telwerk=${nieuw telwerk}
 
     ${gas aansluiting}=  ZeepLibrary.Create object  ns2:GasAansluitingTGType
@@ -266,7 +266,7 @@ Call method
     ...  Bijlage=${bijlage 1}
     # @{bijlagen}=  Create list  ${bijlage 1}
 
-    ${gereed bericht}=  ZeepLibrary.Call operation  GereedmeldenOpdracht  xop=${TRUE}
+    ${gereed bericht}=  ZeepLibrary.Call operation  GereedmeldenOpdracht
     ...  OpdrachtID=12345678901234567
     ...  VersieNummer=1
     ...  Opdrachtnemer=AHak

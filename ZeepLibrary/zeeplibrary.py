@@ -12,10 +12,10 @@ import mimetypes
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+from email.mime.image import MIMEImage
+from email.encoders import encode_7or8bit, encode_base64, encode_noop
 import base64
-
-
-
 
 
 class ZeepLibraryException(Exception):
@@ -215,6 +215,7 @@ class ZeepLibrary:
         with open(filepath, file_mode) as f:
             contents = f.read()
 
+
         attachment = {
             'filename': filename,
             'contents': contents,
@@ -223,12 +224,12 @@ class ZeepLibrary:
         self.active_client.attachments.append(attachment)
 
     @keyword('Call operation')
-    def call_operation(self, operation, xop=False, **kwargs):
+    def call_operation(self, operation, **kwargs):
         if self.active_client.attachments:
             def post_with_attachments(address, body, headers):
                 message = self.create_message(operation, **kwargs)
                 headers, body = self\
-                    ._build_transport_for_multipart_message(message, xop=xop)
+                    ._build_transport_for_multipart_message(message)
                 response = Transport().post(address, body, headers)
                 return response
             self.active_client.transport.post = post_with_attachments
@@ -236,33 +237,33 @@ class ZeepLibrary:
         operation_method = getattr(self.active_client.service, operation)
         return operation_method(**kwargs)
 
-    def _build_transport_for_multipart_message(self, message, xop=False):
-        if xop:
-            root = MIMEMultipart('related',
-                                 type="application/xop+xml",
-                                 start="<message>")
-            message_part = MIMEBase('application', 'xop+xml',
-                                    type='text/xml',
-                                    encoding='utf8')
-        else:
-            root = MIMEMultipart('related',
-                                 type="text/xml",
-                                 start="<message>")
-            message_part = MIMEText('text', 'xml', 'utf8')
+    def _build_transport_for_multipart_message(self, message):
+        root = MIMEMultipart('related',
+                             type="application/xop+xml",
+                             start="<message>")
+        message_part = MIMEApplication(message,
+                                'xop+xml',                                
+                                encode_7or8bit,
+                                type='text/xml')
+        message_part.set_charset('UTF-8')
 
         message_part.add_header('Content-ID', '<message>')
-        message_part.set_payload(message)
-        _add_or_replace_mime_header(message_part,
-                                    'Content-Transfer-Encoding',
-                                    '8bit')
+        message_part.replace_header('Content-Transfer-Encoding', '8bit')
         root.attach(message_part)
         
         for attachment in self.active_client.attachments:
             attached_part = None
             maintype, subtype = attachment['mimetype']
-            attached_part = MIMEBase(maintype, subtype)
-            attached_part.set_payload(attachment['contents'])
-            attached_part.add_header('Content-Transfer-Encoding', 'binary')
+
+            if maintype == 'image':
+                attached_part = MIMEImage(attachment['contents'], subtype, encode_noop)
+                # attached_part = MIMEImage(attachment['contents'], subtype)
+                attached_part.add_header('Content-Transfer-Encoding', 'binary')
+            elif maintype == 'application':
+                attached_part = MIMEApplication(attached_part['contents'], subtype)
+            elif maintype == 'text':
+                attached_part = MIMEText(attached_part['contents'], subtype, encode_7or8bit)
+
             attached_part.add_header('Content-ID', '<{}>'\
                                      .format(attachment['filename']))
             attached_part.add_header('Content-Disposition', 'attachment', name=attachment['filename'])
@@ -315,11 +316,3 @@ def _prettify_request(request, hide_auth=True):
             '------------ REQUEST END ------------'
         ))
         return result
-
-def _add_or_replace_mime_header(mime_object, key, value):
-    if key in mime_object.keys():
-        mime_object.replace_header(key, value)
-    else:
-        mime_object.add_header(key, value)
-
-
