@@ -11,6 +11,7 @@ Library  XML  use_lxml=${TRUE}
 ${CALCULATOR WSDL}  ${CURDIR}${/}calculator.wsdl
 ${BLZSERVICE WSDL}  ${CURDIR}${/}blzservice.wsdl
 ${AGA WSDL}         ${EXECDIR}${/}..${/}gsa${/}aga.wsdl
+${CERT}             ${EXECDIR}${/}..${/}gsa${/}all_secure_login_root_ca_cert.cer
 ${GSA WSDL}         ${EXECDIR}${/}..${/}gsa${/}gsa.wsdl
 
 
@@ -145,72 +146,10 @@ Creating a more complicated message as string
     Should start with  ${message}  <soap-env:Envelope
     Close client
 
-# Call method
-#     ${proxies}=  Create dictionary
-#     ...  https=https://proxyiwsva.alliander.local:8080
-#     ...  http=http://proxyiwsva.alliander.local:8080
-#     Create client  ${AGA WSDL}  verify=${EXECDIR}${/}..${/}gsa${/}aga.wsdl  proxies=${proxies}
-
-#     ${aanlever datum document}=  Get current date  result_format=datetime
-#     ${datum technisch gereed}=  Get current date  result_format=datetime
-#     ${uitvoering tijdstip}=  Get current date  result_format=datetime
-
-#     ${hoofdleiding}=  ZeepLibrary.Create object  ns0:HoofdleidingGasType
-#     ...  Materiaal=Sojamelk
-#     ...  Netdruk=30 mbar
-#     ...  NominaalDiameter=20
-
-#     ${aansluiting gas}=  ZeepLibrary.Create object  ns0:AansluitingGasAGType
-#     ...  EANcode=1234567890123
-#     ...  UitgevoerdeActiviteit=Plaatsen
-#     ...  Hoofdleiding=${hoofdleiding}
-
-#     ${monteur}=  ZeepLibrary.Create object  ns0:MonteurType
-#     ...  Naam=Knaap
-
-#     ${adres}=  ZeepLibrary.Create object  ns2:AdresType
-#     ...  Postcode=6543XX
-#     ...  Straat=Krayenhofflaan
-#     ...  Plaats=Nijmegen
-#     ...  Huisnummer=123H
-
-#     ${assetdata}=  ZeepLibrary.Create object  ns0:AssetdataType
-#     ...  AanleverdatumDocument=${aanlever datum document}
-#     ...  Aanlevering=Aanlevering
-#     ...  Opdrachtnemer=AHak
-#     ...  DatumTechnischGereed=${datum technisch gereed}
-#     ...  Inmeetwijze=Meetlint
-#     ...  Opdrachtgever=DSP
-#     ...  AansluitingGas=${aansluiting gas}
-#     ...  Monteur=${monteur}
-#     ...  TijdstipUitvoering=${uitvoering tijdstip}
-#     ...  Adres=${adres}
-#     ...  AardWerkzaamheden=Plaatsen/Wijzigen Aansluitkabel/leiding
-
-#     ${aga bericht}=  ZeepLibrary.Call operation  SIOS_DSP_AdministratiefGereed
-#     ...  OpdrachtID=0000001123
-#     ...  Versienummer=1.33
-#     ...  Assetdata=${assetdata}
-#     ...  AantalBeoordelingen=${1}
-#     # ...  Bijlagen=${bijlagen}
-
-
-#     # Should start with  ${message}  <soap-env:Envelope
-#     # Parse XML  ${message}
-#     Close client
-Call method
+Call method GSA
     Create client  ${GSA WSDL}  verify=${FALSE}
 
     ${vandaag}=  Get current date  result_format=datetime
-
-    # Call operation  WijzigenPlandatum
-    # ...  OpdrachtID=1234567890ABCDEFG
-    # ...  Opdrachtnemer=X
-    # ...  TypeTijdstip=x
-    # ...  Starttijd=${vandaag}
-    # ...  Eindtijd=${vandaag}
-
-    # ZeepLibrary.Create client  ${GSA WSDL}
 
     Add attachment  ${CURDIR}\\..\\..\\gsa\\Handtekening.jpg
 
@@ -252,10 +191,6 @@ Call method
     ${assetregistratie}=  ZeepLibrary.Create object  ns2:AssetRegistratieType
     ...  GasType=${NONE}
 
-    # ${b}=  Get binary file  ${EXECDIR}${/}..${/}gsa${/}Handtekening.jpg
-    # ${c}=  Evaluate  base64.b64encode(open('C:\\Robot Framework Projects\\gsa\\Handtekening.jpg', mode='rb').read())  modules=base64
-
-    # Log to console  ${c}
     ${bijlage 1}=  Create object  ns2:BijlageType
     ...  BijlageID=Handtekening.jpg
     ...  Bestandsnaam=Handtekening.jpg
@@ -264,9 +199,8 @@ Call method
     ...  Bestandsdata=1
     ${bijlagen}=  Create object  ns2:BijlagenType
     ...  Bijlage=${bijlage 1}
-    # @{bijlagen}=  Create list  ${bijlage 1}
 
-    ${gereed bericht}=  ZeepLibrary.Call operation  GereedmeldenOpdracht
+    ${gereed bericht}=  ZeepLibrary.Call operation  GereedmeldenOpdracht  xop=${TRUE}
     ...  OpdrachtID=12345678901234567
     ...  VersieNummer=1
     ...  Opdrachtnemer=AHak
@@ -278,60 +212,62 @@ Call method
 
     Log  ${gereed bericht}  console=${TRUE}
 
+    [Teardown]  Close client
 
-    # Call operation  WijzigenPlandatum  xop=${TRUE}
-    # ...  OpdrachtID=1234567890ABCDEFGx
-    # ...  Opdrachtnemer=X
-    # ...  TypeTijdstip=x
-    # ...  Starttijd=${vandaag}
-    # ...  Eindtijd=${vandaag}
-    # ...  Bijlagen=${bijlagen}
+Call method AGA
+    ${auth}=  Create list  USER  PASS
+    Create client  ${AGA WSDL}  verify=${CERT}  auth=${auth}
+    Add attachment  ${CURDIR}\\..\\..\\gsa\\Handtekening.jpg
 
+    ${aanlever datum document}=  Get current date  result_format=datetime
+    ${datum technisch gereed}=  Get current date  result_format=datetime
+    ${uitvoering tijdstip}=  Get current date  result_format=datetime
 
-    # ${aanlever datum document}=  Get current date  result_format=datetime
-    # ${datum technisch gereed}=  Get current date  result_format=datetime
-    # ${uitvoering tijdstip}=  Get current date  result_format=datetime
+    ${hoofdleiding}=  ZeepLibrary.Create object  ns0:HoofdleidingGasType
+    ...  Materiaal=Sojamelk
+    ...  Netdruk=30 mbar
+    ...  NominaalDiameter=20
 
-    # ${hoofdleiding}=  ZeepLibrary.Create object  ns0:HoofdleidingGasType
-    # ...  Materiaal=Sojamelk
-    # ...  Netdruk=30 mbar
-    # ...  NominaalDiameter=20
+    ${aansluiting gas}=  ZeepLibrary.Create object  ns0:AansluitingGasAGType
+    ...  EANcode=123456789012345678
+    ...  UitgevoerdeActiviteit=Plaatsen
+    ...  Hoofdleiding=${hoofdleiding}
 
-    # ${aansluiting gas}=  ZeepLibrary.Create object  ns0:AansluitingGasAGType
-    # ...  EANcode=1234567890123
-    # ...  UitgevoerdeActiviteit=Plaatsen
-    # ...  Hoofdleiding=${hoofdleiding}
+    ${monteur}=  ZeepLibrary.Create object  ns0:MonteurType
+    ...  Naam=Knaap
 
-    # ${monteur}=  ZeepLibrary.Create object  ns0:MonteurType
-    # ...  Naam=Knaap
+    ${adres}=  ZeepLibrary.Create object  ns2:AdresType
+    ...  Postcode=6543XX
+    ...  Straat=Krayenhofflaan
+    ...  Plaats=Nijmegen
+    ...  Huisnummer=123H
 
-    # ${adres}=  ZeepLibrary.Create object  ns2:AdresType
-    # ...  Postcode=6543XX
-    # ...  Straat=Krayenhofflaan
-    # ...  Plaats=Nijmegen
-    # ...  Huisnummer=123H
+    ${assetdata}=  ZeepLibrary.Create object  ns0:AssetdataType
+    ...  AanleverdatumDocument=${aanlever datum document}
+    ...  Aanlevering=Aanlevering
+    ...  Opdrachtnemer=AHak
+    ...  DatumTechnischGereed=${datum technisch gereed}
+    ...  Inmeetwijze=Meetlint
+    ...  Opdrachtgever=DSP
+    ...  AansluitingGas=${aansluiting gas}
+    ...  Monteur=${monteur}
+    ...  TijdstipUitvoering=${uitvoering tijdstip}
+    ...  Adres=${adres}
+    ...  AardWerkzaamheden=Plaatsen/Wijzigen Aansluitkabel/leiding
 
-    # ${assetdata}=  ZeepLibrary.Create object  ns0:AssetdataType
-    # ...  AanleverdatumDocument=${aanlever datum document}
-    # ...  Aanlevering=Aanlevering
-    # ...  Opdrachtnemer=AHak
-    # ...  DatumTechnischGereed=${datum technisch gereed}
-    # ...  Inmeetwijze=Meetlint
-    # ...  Opdrachtgever=DSP
-    # ...  AansluitingGas=${aansluiting gas}
-    # ...  Monteur=${monteur}
-    # ...  TijdstipUitvoering=${uitvoering tijdstip}
-    # ...  Adres=${adres}
-    # ...  AardWerkzaamheden=Plaatsen/Wijzigen Aansluitkabel/leiding
-
-    # ${aga bericht}=  ZeepLibrary.Call operation  SIOS_DSP_AdministratiefGereed
-    # ...  OpdrachtID=0000001123
-    # ...  Versienummer=1.33
-    # ...  Assetdata=${assetdata}
-    # ...  AantalBeoordelingen=${1}
-    # ...  Bijlagen=${bijlagen}
+    ${handtekening bijlage}=  ZeepLibrary.Create object  ns2:BijlageType
+    ...  BijlageID=1
+    ...  Bestandsnaam=Handtekening
+    ...  Extensie=jpg
+    ...  Documentsoort=Handtekening
+    ${bijlagen}=  Create list  ${handtekening bijlage}
 
 
-#     # Should start with  ${message}  <soap-env:Envelope
-#     # Parse XML  ${message}
-    Close client
+    ${aga bericht}=  ZeepLibrary.Call operation  SIOS_DSP_AdministratiefGereed
+    ...  OpdrachtID=LIA-A-006001234567
+    ...  Versienummer=1.33
+    ...  Assetdata=${assetdata}
+    ...  AantalBeoordelingen=${1}
+    ...  Bijlagen=${bijlagen}
+
+    [Teardown]  Close client
