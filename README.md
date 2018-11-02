@@ -20,6 +20,6 @@ Currently supported features include:
 ## Disclaimer
 This library started out as a way of enabling the use of Zeep within Robot Framework for very specific problems I encountered, and slowly it is turning into something more mature. It's definitely not there yet though, and as I don't intend to put a lot of time into this project due to time limitations, contributions are highly appreciated.
 
-Furthermore, my knowledge of SOAP is not anywhere near expert-level. Also, I'm sure I could've used a lot more functionality provided by Zeep if I had familiarized myself with the code more. Due to time limitations and the commercially driven goals I did not study as much as I wanted to, which probably has resulted in several implementations to be poor.
+Furthermore, my knowledge of SOAP is not anywhere near expert-level. Also, I'm sure I could've used a lot more functionality provided by Zeep if I had familiarized myself with the code more. Due to time limitations and commercially driven goals I did not study as much as I wanted to, which probably has resulted in several implementations to be of poor quality.
 
-However, I'm fairly certain the code can still be useful to people and I'm willing to improve it. Its readability is very great I guess, so contributing should not be too hard :).
+However, I'm fairly certain the code can still be useful to people and I'm willing to improve it. Its readability is really good I guess, so contributing should not be too hard :).
