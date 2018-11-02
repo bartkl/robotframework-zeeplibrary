@@ -196,7 +196,7 @@ Call method GSA
     ...  Bestandsnaam=Handtekening.jpg
     ...  Extensie=jpg
     ...  Omschrijving=CDMA_nietverbonden
-    ...  Bestandsdata=1
+    ...  Bestandsdata=cid:Handtekening.jpg
     ${bijlagen}=  Create object  ns2:BijlagenType
     ...  Bijlage=${bijlage 1}
 

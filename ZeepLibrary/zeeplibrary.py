@@ -74,10 +74,107 @@ class ZeepLibrary:
             raise ClientNotFoundException(alias)
 
         self._active_client_alias = alias
-    
+
     @property
     def clients(self):
         return self._clients
+
+    def _build_multipart_request(self, message, xop=False):
+        if xop:
+            root = MIMEMultipart('related',
+                                 type='application/xop+xml',
+                                 start='<message>')
+            message_part = MIMEApplication(message,
+                                           'xop+xml',
+                                           encode_7or8bit,
+                                           type='text/xml')
+        else:
+            root = MIMEMultipart('related',
+                                 type='text/xml',
+                                 start='<message>')
+            message_part = MIMEBase('text', 'xml')
+            message_part.set_charset('UTF-8')
+            message_part.replace_header('Content-Transfer-Encoding', '8bit')
+
+        message_part.add_header('Content-ID', '<message>')
+        if xop:
+            message = _perform_xop_magic(message)
+
+        message_part.set_payload(message)
+        root.attach(message_part)
+
+        for attachment in self.active_client.attachments:
+            maintype, subtype = attachment['mimetype']
+            if maintype == 'image':
+                attached_part = MIMEImage(attachment['contents'], subtype, encode_noop, name=attachment['filename'])
+                attached_part.add_header('Content-Transfer-Encoding', 'binary')
+            elif maintype == 'application':
+                attached_part = MIMEApplication(attachment['contents'], subtype)
+            elif maintype == 'text':
+                attached_part = MIMEText(attachment['contents'], subtype, 'utf8')
+            else:
+                attached_part = MIMEBase(maintype, subtype)
+
+            attached_part.add_header('Content-ID', '<{}>'\
+                                     .format(attachment['filename']))
+            attached_part.add_header('Content-Disposition', 'attachment', name=attachment['filename'], filename=attachment['filename'])
+
+            if attachment['http_header']:
+                for header in attachment['http_header'].keys():
+                    _add_or_replace_http_header_if_passed(attached_part, attachment['http_header'], header)
+            root.attach(attached_part)
+
+        body = root.as_string().split('\n\n', 1)[1]
+        headers = dict(root.items())
+
+        logger.warn(headers)
+        logger.warn(body)
+
+        return headers, body
+
+    @keyword('Add attachment')
+    def add_attachment(self,
+                       filepath,
+                       filename=None,
+                       mimetype=None,
+                       binary=True,
+                       http_header=None):
+
+        if not filename:
+            filename = os.path.basename(filepath)
+
+        if not mimetype:
+            mimetype = _guess_mimetype(filename)
+
+        if binary:
+            file_mode = 'rb'
+        else:
+            file_mode = 'rt'
+
+        with open(filepath, file_mode) as f:
+            contents = f.read()
+
+        attachment = {
+            'filename': filename,
+            'contents': contents,
+            'mimetype': mimetype,
+            'http_header': http_header,
+        }
+        self.active_client.attachments.append(attachment)
+
+    @keyword('Call operation')
+    def call_operation(self, operation, xop=False, debug=False, **kwargs):
+        if self.active_client.attachments:
+            original_post_method = self.active_client.transport.post
+
+            def post_with_attachments(address, body, headers):
+                message = self.create_message(operation, **kwargs)
+                headers, body = self._build_multipart_request(message, xop=xop)
+                return original_post_method(address, body, headers)
+            self.active_client.transport.post = post_with_attachments
+
+        operation_method = getattr(self.active_client.service, operation)
+        return operation_method(**kwargs)
 
     @keyword('Close client')
     def close_client(self, alias=None):
@@ -191,105 +288,9 @@ class ZeepLibrary:
 
         return current_active_client_alias
 
-    @keyword('Add attachment')
-    def add_attachment(self,
-                       filepath,
-                       filename=None,
-                       mimetype=None,
-                       binary=True):
-        if not filename:
-            filename = os.path.basename(filepath)
-
-        if not mimetype:
-            mimetype = _guess_mimetype(filename)
-
-        if binary:
-            file_mode = 'rb'
-        else:
-            file_mode = 'rt'
-
-        with open(filepath, file_mode) as f:
-            contents = f.read()
-
-
-        attachment = {
-            'filename': filename,
-            'contents': contents,
-            'mimetype': mimetype
-        }
-        self.active_client.attachments.append(attachment)
-
-    @keyword('Call operation')
-    def call_operation(self, operation, xop=False, debug=False, **kwargs):
-        if self.active_client.attachments:
-            original_post_method = self.active_client.transport.post
-            
-            def post_with_attachments(address, body, headers):
-                message = self.create_message(operation, **kwargs)
-                headers, body = self\
-                    ._build_transport_for_multipart_message(message, xop=xop)
-                return original_post_method(address, body, headers)
-            
-            self.active_client.transport.post = post_with_attachments
-        
-        operation_method = getattr(self.active_client.service, operation)
-        return operation_method(**kwargs)
-
-    def _build_transport_for_multipart_message(self, message, xop=False):
-        if xop:
-            root = MIMEMultipart('related',
-                                 type='application/xop+xml',
-                                 start='<message>')
-            message_part = MIMEApplication(message,
-                                           'xop+xml',                                
-                                           encode_7or8bit,
-                                           type='text/xml')
-        else:
-            root = MIMEMultipart('related',
-                                 type='text/xml',
-                                 start='<message>')
-            message_part = MIMEBase('text', 'xml')
-            message_part.set_charset('UTF-8')
-            message_part.set_payload(message)
-            message_part.replace_header('Content-Transfer-Encoding', '8bit')
-
-        message_part.add_header('Content-ID', '<message>')
-        root.attach(message_part)
-        
-        for attachment in self.active_client.attachments:
-            attached_part = None
-            maintype, subtype = attachment['mimetype']
-
-            if maintype == 'image':
-                attached_part = MIMEImage(attachment['contents'], subtype, encode_noop, name=attachment['filename'])
-                attached_part.add_header('Content-Transfer-Encoding', 'binary')
-            elif maintype == 'application':
-                attached_part = MIMEApplication(attachment['contents'], subtype)
-            elif maintype == 'text':
-                attached_part = MIMEText(attachment['contents'], subtype, 'utf8')
-
-            attached_part.add_header('Content-ID', '<{}>'\
-                                     .format(attachment['filename']))
-            attached_part.add_header('Content-Disposition', 'attachment', name=attachment['filename'], filename=attachment['filename'])
-            root.attach(attached_part)
-
-        body = root.as_string().split('\n\n', 1)[1]  # TODO: Is this necessary; what is it; can it be done more elegantly?
-        body = body.replace("<ns0:Bestandsdata>MQ==</ns0:Bestandsdata>", '<ns0:Bestandsdata><inc:Include href="cid:Handtekening.jpg" xmlns:inc="http://www.w3.org/2004/08/xop/include"/></ns0:Bestandsdata>')
-        headers = dict(root.items())
-        # logger.warn(headers)
-        # logger.warn(body)
-        return headers, body
-
-
-# Utility functions.
-def _log(item, to_log=True, to_console=False):
-    if to_log:
-        logger.info(item, also_console=to_console)
-    elif to_console:
-        logger.console(item)
-
+# Utilities.
 def _guess_mimetype(filename):
-    # Credits: https://docs.python.org/2/library/email-examples.html
+    # Borrowed from: https://docs.python.org/2/library/email-examples.html
     ctype, encoding = mimetypes.guess_type(filename)
     if ctype is None or encoding is not None:
         # No guess could be made, or the file is encoded (compressed), so
@@ -298,6 +299,26 @@ def _guess_mimetype(filename):
     maintype, subtype = ctype.split('/', 1)
 
     return maintype, subtype
+
+def _log(item, to_log=True, to_console=False):
+    if to_log:
+        logger.info(item, also_console=to_console)
+    elif to_console:
+        logger.console(item)
+
+def _perform_xop_magic(message):
+    doc = etree.fromstring(message)
+    candidates = doc.xpath('//*[string-length(.) mod 4 = 0 and re:test(., "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$")]', namespaces={'re': 'http://exslt.org/regular-expressions'})
+    for el in candidates:
+        decoded_val = base64.b64decode(el.text)
+        if decoded_val.startswith('cid:'):
+            xop_include_el = etree.Element('{http://www.w3.org/2004/08/xop/include}Include', href='{}'.format(decoded_val))
+            el.clear()
+            el.append(xop_include_el)
+
+    message = etree.tostring(doc)
+
+    return message
 
 def _prettify_request(request, hide_auth=True):
         """Pretty prints the request for the supplied `requests.Request`
@@ -316,3 +337,12 @@ def _prettify_request(request, hide_auth=True):
             '------------ REQUEST END ------------'
         ))
         return result
+
+def _add_or_replace_http_header_if_passed(mime_object, headers, key):
+    if not key in headers:
+        return
+
+    if not key in mime_object.keys():
+        mime_object.add_header(key, headers[key])
+    else:
+        mime_object.replace_header(key, headers[key])
