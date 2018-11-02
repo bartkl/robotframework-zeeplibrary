@@ -71,6 +71,7 @@ Example SOAP call
     ${attachment}=  Create object  ns1:AttachmentType
     ...  Nr=1
     ...  Filename=Signature.jpg
+    ...  Contents=cid:Signature.jpg  # `base64Binary' field which will be optimized using XOP. The value of this `cid' property should correspond to the physical filename.
     ...  Type=Signature
     @{attachments}=  Create list  ${attachment}  # In this example, the attachments don't have some grouping `Attachments' parent, but the `AttachmentType' is a list.
     
