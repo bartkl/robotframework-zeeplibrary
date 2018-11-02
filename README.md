@@ -1,13 +1,25 @@
 # ZeepLibrary
 Robot Framework library for using [Zeep](https://python-zeep.readthedocs.io/en/master).
 
-I've written this library to solve specific problems I encountered and I currently don't intend to take responsibility for turning this library into a more mature one. I might in the future however, but just bear this in mind.
+## Compatibility
+- _Python 2.7.15_
+- _Zeep 2.5.0_
+The code might work with other versions of Zeep; I simply haven't tested this. Also, it _probably_ takes only minor tweaking to get it to work with Python 3. Currently I don't have the time nor intention to refactor the code to be compatible with both Python 2 and 3.
 
-Also, because of this, the library is in a quite infantile stage. On a positive note though, I did try my best to write it well and elegantly, so there's certainly a possibility you'll find this library useful, if not immediately then perhaps as a basis for adjusting it to your needs.
+## Features
+Currently supported features include:
+- Creating SOAP client instances from WSDL files/locations.
+- Switching between several simultaneously opened clients by alias
+- Calling SOAP operations with named parameters for easy building
+- Optionally the SOAP message can be obtained as string instead
+- Adding attachments
+  - This will result in multipart HTTP requests being built and sent
+  - XOP serialization is also allowed (somewhat similar to how SOAP UI handles it)
+- Logging of raw requests/responses
 
-Of course you're more than welcome to contribute to this library, that would be appreciated!
+## Disclaimer
+This library started out as a way of enabling the use of Zeep within Robot Framework for very specific problems I encountered, and slowly it is turning into something more mature. It's definitely not there yet though, and as I don't intend to put a lot of time into this project due to time limitations, contributions are highly appreciated.
 
-## TODO
-* As soon as the library is ready for it, I will start releasing stable, usable versions and distribute it on PyPI as well.
-* Some basic functionality should still be implemented before a release can be taken seriously, such as calling SOAP methods.
-* More documentation and stuff like installation instructions also has/have to be written.
+Furthermore, my knowledge of SOAP is not anywhere near expert-level. Also, I'm sure I could've used a lot more functionality provided by Zeep if I had familiarized myself with the code more. Due to time limitations and the commercially driven goals I did not study as much as I wanted to, which probably has resulted in several implementations to be poor.
+
+However, I'm fairly certain the code can still be useful to people and I'm willing to improve it. Its readability is very great I guess, so contributing should not be too hard :).
