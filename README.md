@@ -4,6 +4,7 @@ Robot Framework library for using [Zeep](https://python-zeep.readthedocs.io/en/m
 ## Compatibility
 - _Python 2.7.15_
 - _Zeep 2.5.0_
+
 The code might work with other versions of Zeep; I simply haven't tested this. Also, it _probably_ takes only minor tweaking to get it to work with Python 3. Currently I don't have the time nor intention to refactor the code to be compatible with both Python 2 and 3.
 
 ## Features
@@ -30,7 +31,6 @@ Robot Framework library for using [Zeep](https://python-zeep.readthedocs.io/en/m
 ## Compatibility
 - _Python 2.7.15_
 - _Zeep 2.5.0_
-
 The code might work with other versions of Zeep; I simply haven't tested this. Also, it _probably_ takes only minor tweaking to get it to work with Python 3. Currently I don't have the time nor intention to refactor the code to be compatible with both Python 2 and 3.
 
 ## Features
