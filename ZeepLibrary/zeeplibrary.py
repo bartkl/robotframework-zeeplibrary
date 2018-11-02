@@ -33,6 +33,7 @@ class ClientNotFoundException(ZeepLibraryException):
         self.message = "Could not find a client with alias `{}'."\
                            .format(alias)
 
+
 class AliasNotFoundException(ZeepLibraryException):
     def __init__(self):
         self.message = "Could not find alias for the provided client."
@@ -106,22 +107,34 @@ class ZeepLibrary:
         for attachment in self.active_client.attachments:
             maintype, subtype = attachment['mimetype']
             if maintype == 'image':
-                attached_part = MIMEImage(attachment['contents'], subtype, encode_noop, name=attachment['filename'])
-                attached_part.add_header('Content-Transfer-Encoding', 'binary')
+                attached_part = MIMEImage(attachment['contents'],
+                                          subtype,
+                                          encode_noop,
+                                          name=attachment['filename'])
+                attached_part.add_header('Content-Transfer-Encoding',
+                                         'binary')
             elif maintype == 'application':
-                attached_part = MIMEApplication(attachment['contents'], subtype)
+                attached_part = MIMEApplication(attachment['contents'],
+                                                subtype)
             elif maintype == 'text':
-                attached_part = MIMEText(attachment['contents'], subtype, 'utf8')
+                attached_part = MIMEText(attachment['contents'],
+                                         subtype,
+                                         'utf8')
             else:
                 attached_part = MIMEBase(maintype, subtype)
 
-            attached_part.add_header('Content-ID', '<{}>'\
+            attached_part.add_header('Content-ID', '<{}>'
                                      .format(attachment['filename']))
-            attached_part.add_header('Content-Disposition', 'attachment', name=attachment['filename'], filename=attachment['filename'])
+            attached_part.add_header('Content-Disposition',
+                                     'attachment',
+                                     filename=attachment['filename'])
 
-            if attachment['http_header']:
-                for header in attachment['http_header'].keys():
-                    _add_or_replace_http_header_if_passed(attached_part, attachment['http_header'], header)
+            if attachment['http_headers']:
+                for header in attachment['http_headers'].keys():
+                    _add_or_replace_http_header_if_passed(
+                                                   attached_part,
+                                                   attachment['http_headers'],
+                                                   header)
             root.attach(attached_part)
 
         body = root.as_string().split('\n\n', 1)[1]
@@ -138,7 +151,7 @@ class ZeepLibrary:
                        filename=None,
                        mimetype=None,
                        binary=True,
-                       http_header=None):
+                       http_headers=None):
 
         if not filename:
             filename = os.path.basename(filepath)
@@ -158,7 +171,7 @@ class ZeepLibrary:
             'filename': filename,
             'contents': contents,
             'mimetype': mimetype,
-            'http_header': http_header,
+            'http_headers': http_headers,
         }
         self.active_client.attachments.append(attachment)
 
@@ -169,7 +182,8 @@ class ZeepLibrary:
 
             def post_with_attachments(address, body, headers):
                 message = self.create_message(operation, **kwargs)
-                headers, body = self._build_multipart_request(message, xop=xop)
+                headers, body = self._build_multipart_request(message,
+                                                              xop=xop)
                 return original_post_method(address, body, headers)
             self.active_client.transport.post = post_with_attachments
 
@@ -221,7 +235,7 @@ class ZeepLibrary:
 
     @keyword('Create message')
     def create_message(self, operation, to_string=True, **kwargs):
-        message = self.active_client.create_message(\
+        message = self.active_client.create_message(
             self.active_client.service,
             operation,
             **kwargs)
@@ -241,7 +255,8 @@ class ZeepLibrary:
             return self.active_client_alias
         else:
             for alias, client_ in self.clients.iteritems():
-                if client_ == client:  return alias
+                if client_ == client:
+                    return alias
         raise AliasNotFoundException()
 
     @keyword('Get client')
@@ -288,6 +303,7 @@ class ZeepLibrary:
 
         return current_active_client_alias
 
+
 # Utilities.
 def _guess_mimetype(filename):
     # Borrowed from: https://docs.python.org/2/library/email-examples.html
@@ -300,25 +316,34 @@ def _guess_mimetype(filename):
 
     return maintype, subtype
 
+
 def _log(item, to_log=True, to_console=False):
     if to_log:
         logger.info(item, also_console=to_console)
     elif to_console:
         logger.console(item)
 
+
 def _perform_xop_magic(message):
     doc = etree.fromstring(message)
-    candidates = doc.xpath('//*[string-length(.) mod 4 = 0 and re:test(., "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$")]', namespaces={'re': 'http://exslt.org/regular-expressions'})
+    candidates = doc.xpath(('//*[string-length(.) mod 4 = 0 and re:test(., "^'
+                            '([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+'
+                            '/]{3}=|[A-Za-z0-9+/]{2}==)$")]'),
+                           namespaces={
+                            're': 'http://exslt.org/regular-expressions'})
     for el in candidates:
         decoded_val = base64.b64decode(el.text)
         if decoded_val.startswith('cid:'):
-            xop_include_el = etree.Element('{http://www.w3.org/2004/08/xop/include}Include', href='{}'.format(decoded_val))
+            xop_include_el = etree.Element(
+                '{http://www.w3.org/2004/08/xop/include}Include',
+                href='{}'.format(decoded_val))
             el.clear()
             el.append(xop_include_el)
 
     message = etree.tostring(doc)
 
     return message
+
 
 def _prettify_request(request, hide_auth=True):
         """Pretty prints the request for the supplied `requests.Request`
@@ -327,22 +352,27 @@ def _prettify_request(request, hide_auth=True):
         on the `requests.Response` object use the `request` attribute.
         """
         if hide_auth:
-            logger.warn("Hiding the `Authorization' header for security reasons. If you wish to display it anyways, pass `hide_auth=True`.")
+            logger.warn(("Hiding the `Authorization' header for security "
+                         "reasons. If you wish to display it anyways, pass "
+                         "`hide_auth=True`."))
         result = ('{}\n{}\n{}\n\n{}{}'.format(
             '----------- REQUEST BEGIN -----------',
             request.method + ' ' + request.url,
-            '\n'.join('{}: {}'.format(key, value) for key, value in request.headers.items() if not(key == 'Authorization' and hide_auth)),
+            '\n'.join('{}: {}'.format(key, value)
+                      for key, value in request.headers.items()
+                      if not(key == 'Authorization' and hide_auth)),
             request.data,
             "\n"
             '------------ REQUEST END ------------'
         ))
         return result
 
+
 def _add_or_replace_http_header_if_passed(mime_object, headers, key):
-    if not key in headers:
+    if key not in headers:
         return
 
-    if not key in mime_object.keys():
+    if key not in mime_object.keys():
         mime_object.add_header(key, headers[key])
     else:
         mime_object.replace_header(key, headers[key])
