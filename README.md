@@ -23,3 +23,32 @@ This library started out as a way of enabling the use of Zeep within Robot Frame
 Furthermore, my knowledge of SOAP is not anywhere near expert-level. Also, I'm sure I could've used a lot more functionality provided by Zeep if I had familiarized myself with the code more. Due to time limitations and commercially driven goals I did not study as much as I wanted to, which probably has resulted in several implementations to be of poor quality.
 
 However, I'm fairly certain the code can still be useful to people and I'm willing to improve it. Its readability is really good I guess, so contributing should not be too hard :).
+
+## Example
+```robot
+*** Variables ***
+${SIGNATURE IMAGE}  ..${/}Images${/}Signature.jpg
+${BANK WSDL}        ..${/}WSDLs${/}Bank.wsdl
+${SSL CERT FILE}    ..${/}SSL Certs${/}Some certificate.cert
+&{PROXIES}
+...  http=http://someproxy.local:8080
+...  https=https://someproxy.local:8080
+
+*** Test Cases ***
+Example SOAP call
+    Create client  ${BANK WSDL}  verify=${SSL CERT FILE}  proxies=${PROXIES}
+
+    ${today}=  Get current date  result_format=datetime
+
+    Add attachment  ${SIGNATURE IMAGE}
+    
+    ${attachment}=  Create object  ns1:AttachmentType
+    ...  Nr=1
+    ...  Filename=Signature.jpg
+    ...  Type=Signature
+    @{attachments}=  Create list  ${attachment}  # In this example, the attachments don't have some grouping `Attachments' parent, but the `AttachmentType' is a list.
+    
+    ${response}=  Call operation  GetAccountDetails  xop=${TRUE}
+    ...  BankNr=1234
+    ...  Attachments=${attachments}
+```
