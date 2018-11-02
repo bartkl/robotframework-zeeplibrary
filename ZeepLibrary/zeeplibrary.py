@@ -140,9 +140,6 @@ class ZeepLibrary:
         body = root.as_string().split('\n\n', 1)[1]
         headers = dict(root.items())
 
-        logger.warn(headers)
-        logger.warn(body)
-
         return headers, body
 
     @keyword('Add attachment')
@@ -178,14 +175,32 @@ class ZeepLibrary:
     @keyword('Call operation')
     def call_operation(self, operation, xop=False, debug=False, **kwargs):
         if self.active_client.attachments:
-            original_post_method = self.active_client.transport.post
+            # original_post_method = self.active_client.transport.post
 
-            def post_with_attachments(address, body, headers):
-                message = self.create_message(operation, **kwargs)
-                headers, body = self._build_multipart_request(message,
-                                                              xop=xop)
-                return original_post_method(address, body, headers)
+            # def post_with_attachments(address, body, headers):
+            #     message = self.create_message(operation, **kwargs)
+            #     headers, body = self._build_multipart_request(message,
+            #                                                   xop=xop)
+            #     return original_post_method(address, body, headers)
+            def post_with_attachments(address, message, headers):
+                    message = self.create_message(operation, **kwargs)
+                    logger.debug("HTTP Post to {}:\n".format(address))
+
+                    headers, body = self._build_multipart_request(message,
+                                                                  xop=xop)
+
+                    response = self.active_client.transport.session.post(address,
+                                                 data=body,
+                                                 headers=headers,
+                                                 timeout=self.active_client.transport.operation_timeout)
+
+                    logger.debug(_prettify_request(response.request))
+                    logger.debug("HTTP Response from {0} (status: {1}):\n".format(address, response.status_code))
+                    logger.debug(_prettify_response(response))
+
+                    return response
             self.active_client.transport.post = post_with_attachments
+
 
         operation_method = getattr(self.active_client.service, operation)
         return operation_method(**kwargs)
@@ -362,9 +377,21 @@ def _prettify_request(request, hide_auth=True):
             '\n'.join('{}: {}'.format(key, value)
                       for key, value in request.headers.items()
                       if not(key == 'Authorization' and hide_auth)),
-            request.data,
+            request.body,
             "\n"
             '------------ REQUEST END ------------'
+        ))
+        return result
+
+def _prettify_response(reponse):
+        result = ('{}\n{}\n{}\n\n{}{}'.format(
+            '----------- RESPONSE BEGIN -----------',
+            reponse.url,
+            '\n'.join('{}: {}'.format(key, value)
+                      for key, value in reponse.headers.items()),
+            reponse.text,
+            "\n"
+            '------------ RESPONSE END ------------'
         ))
         return result
 
