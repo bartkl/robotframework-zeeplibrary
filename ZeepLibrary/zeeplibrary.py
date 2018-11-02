@@ -54,7 +54,7 @@ class ZeepLibrary:
     seemed time to write a library to enable Robot Framework to use Zeep.
     """
 
-    __version__ = 0.3
+    __version__ = 0.9
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
 
     def __init__(self):
@@ -326,6 +326,7 @@ def _log(item, to_log=True, to_console=False):
 
 def _perform_xop_magic(message):
     doc = etree.fromstring(message)
+    # Credits go to: https://stackoverflow.com/a/8571649
     candidates = doc.xpath(('//*[string-length(.) mod 4 = 0 and re:test(., "^'
                             '([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+'
                             '/]{3}=|[A-Za-z0-9+/]{2}==)$")]'),
