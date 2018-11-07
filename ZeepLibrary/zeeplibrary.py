@@ -338,26 +338,25 @@ def _log(item, to_log=True, to_console=False):
     elif to_console:
         logger.console(item)
 
-
 def _perform_xop_magic(message):
     doc = etree.fromstring(message)
-    # Credits go to: https://stackoverflow.com/a/8571649
-    candidates = doc.xpath(('//*[string-length(.) mod 4 = 0 and re:test(., "^'
-                            '([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+'
-                            '/]{3}=|[A-Za-z0-9+/]{2}==)$")]'),
-                           namespaces={
-                            're': 'http://exslt.org/regular-expressions'})
-    for el in candidates:
-        decoded_val = base64.b64decode(el.text)
-        if decoded_val.startswith('cid:'):
-            xop_include_el = etree.Element(
-                '{http://www.w3.org/2004/08/xop/include}Include',
-                href='{}'.format(decoded_val))
-            el.clear()
-            el.append(xop_include_el)
+
+    for element in doc.iter():
+        if (element.text and
+            len(element.text) > 0 and
+            len(element.text) % 4 == 0):
+            try:
+                decoded_val = base64.b64decode(element.text)
+                if decoded_val.startswith('cid:'):
+                    xop_include_el = etree.Element(
+                        '{http://www.w3.org/2004/08/xop/include}Include',
+                        href='{}'.format(decoded_val))
+                    element.clear()
+                    element.append(xop_include_el)
+            except TypeError:
+                continue
 
     message = etree.tostring(doc)
-
     return message
 
 
