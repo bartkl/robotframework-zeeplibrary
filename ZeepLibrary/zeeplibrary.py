@@ -54,7 +54,7 @@ class ZeepLibrary:
     seemed time to write a library to enable Robot Framework to use Zeep.
     """
 
-    __version__ = 0.9
+    __version__ = '0.9.2'
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
 
     def __init__(self):
