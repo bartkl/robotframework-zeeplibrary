@@ -369,7 +369,7 @@ def _prettify_request(request, hide_auth=True):
         if hide_auth:
             logger.warn(("Hiding the `Authorization' header for security "
                          "reasons. If you wish to display it anyways, pass "
-                         "`hide_auth=True`."))
+                         "`hide_auth=False`."))
         result = ('{}\n{}\n{}\n\n{}{}'.format(
             '----------- REQUEST BEGIN -----------',
             request.method + ' ' + request.url,
