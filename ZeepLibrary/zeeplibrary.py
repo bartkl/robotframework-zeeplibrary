@@ -173,7 +173,7 @@ class ZeepLibrary:
         self.active_client.attachments.append(attachment)
 
     @keyword('Call operation')
-    def call_operation(self, operation, xop=False, debug=False, **kwargs):
+    def call_operation(self, operation, xop=False, **kwargs):
         if self.active_client.attachments:
             # original_post_method = self.active_client.transport.post
 
