@@ -8,6 +8,7 @@ from robot.api.deco import keyword
 from lxml import etree
 from zeep import Client
 from zeep.transports import Transport
+from zeep.wsse.username import UsernameToken
 import mimetypes
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -231,9 +232,12 @@ class ZeepLibrary:
                       wsdl,
                       alias=None,
                       auth=None,
+                      wsse=None,
                       proxies=None,
                       cert=None,
                       verify=None):
+        if wsse:
+            wsse = UsernameToken(wsse[0], wsse[1])
         session = requests.Session()
         session.cert = cert
         session.proxies = proxies
@@ -242,7 +246,7 @@ class ZeepLibrary:
             session.auth = requests.auth.HTTPBasicAuth(auth[0], auth[1])
         transport = zeep.transports.Transport(session=session)
 
-        client = zeep.Client(wsdl, transport=transport)
+        client = zeep.Client(wsdl, wsse=wsse, transport=transport)
         client.attachments = []
 
         self._add_client(client, alias)
