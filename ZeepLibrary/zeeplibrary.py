@@ -217,7 +217,11 @@ class ZeepLibrary:
 
     @keyword('Close all clients')
     def close_all_clients(self):
-        for alias in self.clients.keys():
+        # FIX: old code produced error: dictionary changed size during iteration
+        # for alias in self.clients.keys():
+        #     self.close_client(alias)
+        aliases = list(self.clients.keys())
+        for alias in aliases:
             self.close_client(alias)
 
     def _add_client(self, client, alias=None):
@@ -255,7 +259,7 @@ class ZeepLibrary:
             operation,
             **kwargs)
         if to_string:
-            return etree.tostring(message)
+            return etree.tostring(message, encoding='unicode')  # returns byte object without encoding.
         else:
             return message
 
@@ -291,7 +295,7 @@ class ZeepLibrary:
 
     @keyword('Get namespace prefix')
     def get_namespace_prefix_for_uri(self, uri):
-        for prefix, uri_ in self.active_client.namespaces.iteritems():
+        for prefix, uri_ in self.active_client.namespaces.items():
             if uri == uri_:
                 return prefix
 
