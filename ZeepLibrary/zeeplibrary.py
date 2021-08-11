@@ -19,29 +19,35 @@ import base64
 
 
 class ZeepLibraryException(Exception):
+    """Custom base class for ZeepLibrary exceptions.
+    New exceptions should base this and overwrite the err_msg attribute.
+    """
+    def __init__(self):
+        self.err_msg = "Default error message"
+
     def __str__(self):
-        return self.message
+        return self.err_msg
 
 
 class AliasAlreadyInUseException(ZeepLibraryException):
     def __init__(self, alias):
-        self.message = "The alias `{}' is already in use.".format(alias)
+        self.err_msg = "The alias `{}' is already in use.".format(alias)
 
 
 class ClientNotFoundException(ZeepLibraryException):
     def __init__(self, alias):
-        self.message = "Could not find a client with alias `{}'."\
+        self.err_msg = "Could not find a client with alias `{}'."\
                            .format(alias)
 
 
 class AliasNotFoundException(ZeepLibraryException):
     def __init__(self):
-        self.message = "Could not find alias for the provided client."
+        self.err_msg = "Could not find alias for the provided client."
 
 
 class AliasRequiredException(ZeepLibraryException):
     def __init__(self):
-        self.message = ("When using more than one client, providing an alias "
+        self.err_msg = ("When using more than one client, providing an alias "
                         "is required.")
 
 
@@ -273,7 +279,7 @@ class ZeepLibrary:
         if not client:
             return self.active_client_alias
         else:
-            for alias, client_ in self.clients.iteritems():
+            for alias, client_ in self.clients.items():
                 if client_ == client:
                     return alias
         raise AliasNotFoundException()
