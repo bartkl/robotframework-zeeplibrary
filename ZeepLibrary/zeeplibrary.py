@@ -1,21 +1,28 @@
-import os
-import zeep
-import requests
-import requests.auth
-from requests import Session
-from robot.api import logger
-from robot.api.deco import keyword
-from lxml import etree
-from zeep import Client
-from zeep.transports import Transport
+"""Library to provide Robot Framework keywords for testing SOAP services.
+Wraps the python zeep module's functionalities to accomplish this.
+"""
+import base64
 import mimetypes
+import os
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
-from email.encoders import encode_7or8bit, encode_base64, encode_noop
-import base64
+# from email.encoders import encode_7or8bit, encode_base64, encode_noop
+from email.encoders import encode_7or8bit, encode_noop
+
+import requests
+import requests.auth
+import zeep
+
+from lxml import etree
+# from requests import Session
+from robot.api.deco import keyword
+from robot.api import logger
+# from zeep import Client
+# from zeep.transports import Transport
 
 
 class ZeepLibraryException(Exception):
@@ -30,22 +37,25 @@ class ZeepLibraryException(Exception):
 
 
 class AliasAlreadyInUseException(ZeepLibraryException):
+    """Raise when an alias is already in use."""
     def __init__(self, alias):
         self.err_msg = "The alias `{}' is already in use.".format(alias)
 
 
 class ClientNotFoundException(ZeepLibraryException):
+    """Raise when a client could not be found with given alias."""
     def __init__(self, alias):
-        self.err_msg = "Could not find a client with alias `{}'."\
-                           .format(alias)
+        self.err_msg = "Could not find a client with alias `{}'.".format(alias)
 
 
 class AliasNotFoundException(ZeepLibraryException):
+    """Raise when an alias could not be found for a client."""
     def __init__(self):
         self.err_msg = "Could not find alias for the provided client."
 
 
 class AliasRequiredException(ZeepLibraryException):
+    """Raise when there is more than one client but no alias was specified."""
     def __init__(self):
         self.err_msg = ("When using more than one client, providing an alias "
                         "is required.")
@@ -167,8 +177,8 @@ class ZeepLibrary:
         else:
             file_mode = 'rt'
 
-        with open(filepath, file_mode) as f:
-            contents = f.read()
+        with open(filepath, file_mode) as file_object:
+            contents = file_object.read()
 
         attachment = {
             'filename': filename,
@@ -189,24 +199,21 @@ class ZeepLibrary:
             #                                                   xop=xop)
             #     return original_post_method(address, body, headers)
             def post_with_attachments(address, message, headers):
-                    message = self.create_message(operation, **kwargs)
-                    logger.debug("HTTP Post to {}:\n".format(address))
-
-                    headers, body = self._build_multipart_request(message,
-                                                                  xop=xop)
-
-                    response = self.active_client.transport.session.post(address,
-                                                 data=body,
-                                                 headers=headers,
-                                                 timeout=self.active_client.transport.operation_timeout)
-
-                    logger.debug(_prettify_request(response.request))
-                    logger.debug("HTTP Response from {0} (status: {1}):\n".format(address, response.status_code))
-                    logger.debug(_prettify_response(response))
-
-                    return response
+                message = self.create_message(operation, **kwargs)
+                logger.debug("HTTP Post to {}:\n".format(address))
+                headers, body = self._build_multipart_request(message, xop=xop)
+                response = self.active_client.transport.session.post(
+                    address,
+                    data=body,
+                    headers=headers,
+                    timeout=self.active_client.transport.operation_timeout
+                )
+                logger.debug(_prettify_request(response.request))
+                logger.debug("HTTP Response from {0} (status: {1}):\n"
+                             .format(address, response.status_code))
+                logger.debug(_prettify_response(response))
+                return response
             self.active_client.transport.post = post_with_attachments
-
 
         operation_method = getattr(self.active_client.service, operation)
         return operation_method(**kwargs)
@@ -223,7 +230,8 @@ class ZeepLibrary:
 
     @keyword('Close all clients')
     def close_all_clients(self):
-        # FIX: old code produced error: dictionary changed size during iteration
+        # FIX
+        # old code produced error: dictionary changed size during iteration
         # for alias in self.clients.keys():
         #     self.close_client(alias)
         aliases = list(self.clients.keys())
@@ -265,13 +273,13 @@ class ZeepLibrary:
             operation,
             **kwargs)
         if to_string:
-            return etree.tostring(message, encoding='unicode')  # returns byte object without encoding.
-        else:
-            return message
+            # etree.tostring returns byte object without encoding kw arg.
+            message = etree.tostring(message, encoding='unicode')
+        return message
 
     @keyword('Create object')
-    def create_object(self, type, *args, **kwargs):
-        type_ = self.active_client.get_type(type)
+    def create_object(self, type_to_get, *args, **kwargs):
+        type_ = self.active_client.get_type(type_to_get)
         return type_(*args, **kwargs)
 
     @keyword('Get alias')
@@ -291,9 +299,10 @@ class ZeepLibrary:
         If no ``alias`` is provided, the active client will be assumed.
         """
         if alias:
-            return self.clients[alias]
+            client = self.clients[alias]
         else:
-            return self.active_client
+            client = self.active_client
+        return client
 
     @keyword('Get clients')
     def get_clients(self):
@@ -304,6 +313,7 @@ class ZeepLibrary:
         for prefix, uri_ in self.active_client.namespaces.items():
             if uri == uri_:
                 return prefix
+        return None
 
     @keyword('Get namespace URI')
     def get_namespace_uri_by_prefix(self, prefix):
@@ -348,13 +358,14 @@ def _log(item, to_log=True, to_console=False):
     elif to_console:
         logger.console(item)
 
+
 def _perform_xop_magic(message):
     doc = etree.fromstring(message)
 
     for element in doc.iter():
         if (element.text and
-            len(element.text) > 0 and
-            len(element.text) % 4 == 0):
+                len(element.text) > 0 and
+                len(element.text) % 4 == 0):
             try:
                 decoded_val = base64.b64decode(element.text)
                 if decoded_val.startswith('cid:'):
@@ -366,43 +377,44 @@ def _perform_xop_magic(message):
             except TypeError:
                 continue
 
-    message = etree.tostring(doc)
+    message = etree.tostring(doc, encoding='unicode')
     return message
 
 
 def _prettify_request(request, hide_auth=True):
-        """Pretty prints the request for the supplied `requests.Request`
-        object. Especially useful after having performed the request, in
-        order to inspect what was truly sent. To access the used request
-        on the `requests.Response` object use the `request` attribute.
-        """
-        if hide_auth:
-            logger.warn(("Hiding the `Authorization' header for security "
-                         "reasons. If you wish to display it anyways, pass "
-                         "`hide_auth=False`."))
-        result = ('{}\n{}\n{}\n\n{}{}'.format(
-            '----------- REQUEST BEGIN -----------',
-            request.method + ' ' + request.url,
-            '\n'.join('{}: {}'.format(key, value)
-                      for key, value in request.headers.items()
-                      if not(key == 'Authorization' and hide_auth)),
-            request.body,
-            "\n"
-            '------------ REQUEST END ------------'
-        ))
-        return result
+    """Pretty prints the request for the supplied `requests.Request`
+    object. Especially useful after having performed the request, in
+    order to inspect what was truly sent. To access the used request
+    on the `requests.Response` object use the `request` attribute.
+    """
+    if hide_auth:
+        logger.warn(("Hiding the `Authorization' header for security "
+                     "reasons. If you wish to display it anyways, pass "
+                     "`hide_auth=False`."))
+    result = ('{}\n{}\n{}\n\n{}{}'.format(
+        '----------- REQUEST BEGIN -----------',
+        request.method + ' ' + request.url,
+        '\n'.join('{}: {}'.format(key, value)
+                  for key, value in request.headers.items()
+                  if not(key == 'Authorization' and hide_auth)),
+        request.body,
+        "\n"
+        '------------ REQUEST END ------------'
+    ))
+    return result
+
 
 def _prettify_response(reponse):
-        result = ('{}\n{}\n{}\n\n{}{}'.format(
-            '----------- RESPONSE BEGIN -----------',
-            reponse.url,
-            '\n'.join('{}: {}'.format(key, value)
-                      for key, value in reponse.headers.items()),
-            reponse.text,
-            "\n"
-            '------------ RESPONSE END ------------'
-        ))
-        return result
+    result = ('{}\n{}\n{}\n\n{}{}'.format(
+        '----------- RESPONSE BEGIN -----------',
+        reponse.url,
+        '\n'.join('{}: {}'.format(key, value)
+                  for key, value in reponse.headers.items()),
+        reponse.text,
+        "\n"
+        '------------ RESPONSE END ------------'
+    ))
+    return result
 
 
 def _add_or_replace_http_header_if_passed(mime_object, headers, key):
