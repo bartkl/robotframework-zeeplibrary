@@ -39,13 +39,13 @@ class ZeepLibraryException(Exception):
 class AliasAlreadyInUseException(ZeepLibraryException):
     """Raise when an alias is already in use."""
     def __init__(self, alias):
-        self.err_msg = "The alias `{}' is already in use.".format(alias)
+        self.err_msg = "The alias '{}' is already in use.".format(alias)
 
 
 class ClientNotFoundException(ZeepLibraryException):
     """Raise when a client could not be found with given alias."""
     def __init__(self, alias):
-        self.err_msg = "Could not find a client with alias `{}'.".format(alias)
+        self.err_msg = "Could not find a client with alias '{}'.".format(alias)
 
 
 class AliasNotFoundException(ZeepLibraryException):
