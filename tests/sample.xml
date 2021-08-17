@@ -1,0 +1,10 @@
+<xml xmlversion="1.0" encoding="utf-8">
+    <element first_attr="attrvalue">
+        <subelement>
+            This is as far as it gets.
+        </subelement>
+        <subelement>
+            Or maybe this.
+        </subelement>
+    </element>
+</xml>
