@@ -69,12 +69,12 @@ Namespace trickery
     Log namespace prefix map
 
     ${client}=  Get client
-    ${some prefix}=  Set variable  ${client.namespaces.keys()[0]}
+    ${some prefix}=  Evaluate    list(${client.namespaces})[0]
     ${uri}=  Get namespace URI  ${some prefix}
 
     Should start with  ${uri}  http
 
-    ${some uri}=  Set variable  ${client.namespaces.items()[0][1]}
+    ${some uri}=  Set Variable  ${{ list(${client.namespaces}.values()) }}[0]
     ${prefix}=  Get namespace prefix  ${some uri}
 
     Close client

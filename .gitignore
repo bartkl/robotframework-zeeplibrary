@@ -1,6 +1,12 @@
 *.pyc
 *~
 *.swp
+.pytest_cache/
+.vscode/
+.tox/
 /.idea/
 /Results/
 /Tests/Results/
+/build/
+/dist/
+/robotframework_zeeplibrary.egg-info
