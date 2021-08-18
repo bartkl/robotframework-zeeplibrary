@@ -32,7 +32,6 @@ def test_active_client_alias_getting(monkeypatch):
         mc.setattr(zl_instance, "_active_client_alias", "first")
         assert zl_instance.active_client_alias == "first"
 
-@pytest.mark.skipif(sys.version_info < (3, 0), reason="Properties do not work with py2 old style classes")
 def test_active_client_alias_setting_succeeds(monkeypatch):
     """Test setting the active client."""
     zl_instance = ZeepLibrary()
@@ -41,7 +40,6 @@ def test_active_client_alias_setting_succeeds(monkeypatch):
         zl_instance.active_client_alias = "first"
         assert zl_instance._active_client_alias == "first"
 
-@pytest.mark.skipif(sys.version_info < (3, 0), reason="Properties do not work with py2 old style classes")
 def test_active_client_alias_setting_raises():
     """Test setting active client fails with non-existing alias."""
     zl_instance = ZeepLibrary()

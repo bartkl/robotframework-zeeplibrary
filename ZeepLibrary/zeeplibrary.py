@@ -61,13 +61,14 @@ class AliasRequiredException(ZeepLibraryException):
                         "is required.")
 
 
-class ZeepLibrary:
+class ZeepLibrary(object):
     """This library is built on top of the library Zeep in order to bring its
     functionality to Robot Framework. Following in the footsteps of
     the (now unmaintained) SudsLibrary, it allows testing SOAP
     communication. Zeep offers a more intuitive and modern approach than
     Suds does, and especially since the latter is unmaintained now, it
     seemed time to write a library to enable Robot Framework to use Zeep.
+    Note: inheriting from 'object' makes ZeepLibrary a new style class in py2.
     """
 
     __version__ = '0.9.2'
