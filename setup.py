@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="robotframework-zeeplibrary",
-    version="0.9.2",
+    version="0.9.3",
     author="Bart Kleijngeld",
     author_email="bartkl@gmail.com",
     description="Robot Framework library for using Zeep.",
@@ -11,5 +11,5 @@ setuptools.setup(
     classifiers=(
         "Operating System :: OS Independent",
     ),
-    install_requires="zeep>=2.5.0",
+    install_requires=("zeep>=2.5.0", "xmlsec>=1.3"),
 )

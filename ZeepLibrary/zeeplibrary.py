@@ -16,7 +16,7 @@ from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
 from email.encoders import encode_7or8bit, encode_base64, encode_noop
 import base64
-
+from ZeepLibrary.ws_wsse import WSSignature
 
 class ZeepLibraryException(Exception):
     def __str__(self):
@@ -233,7 +233,8 @@ class ZeepLibrary:
                       auth=None,
                       proxies=None,
                       cert=None,
-                      verify=None):
+                      verify=None,
+                      wsse=None):
         session = requests.Session()
         session.cert = cert
         session.proxies = proxies
@@ -242,7 +243,7 @@ class ZeepLibrary:
             session.auth = requests.auth.HTTPBasicAuth(auth[0], auth[1])
         transport = zeep.transports.Transport(session=session)
 
-        client = zeep.Client(wsdl, transport=transport)
+        client = zeep.Client(wsdl, transport=transport, wsse=wsse)
         client.attachments = []
 
         self._add_client(client, alias)
@@ -318,6 +319,26 @@ class ZeepLibrary:
 
         return current_active_client_alias
 
+    @keyword()
+    def wssignature(self, key_file, cert_file, password=None, actor=None, verify=False):
+        """This keyword contructs a wsse signing object that can be used
+        by the keyword Create Session in the wsse argument.
+
+        key_file and cert_file are PEM format files for pythons requests module. 
+        The password is to unlock the key file if it is secured with a password.
+        If actor is given a value, it is used to populate the actor attribute on the signature.
+
+        verify, if given, should be another WSSignature object for verifying the response
+        or the word "DISABLED" to explicitly disable signature verification.
+
+        When verify is not given, the same key as the request is used.
+        """
+        if hasattr(verify, 'upper') and verify.upper() == 'DISABLED':
+            return WSSignature(key_file, cert_file, password=password, actor=actor, verify=False)
+        elif verify:
+            return WSSignature(key_file, cert_file, password=password, actor=actor, verify=verify)
+        else:
+            return WSSignature(key_file, cert_file, password=password, actor=actor)
 
 # Utilities.
 def _guess_mimetype(filename):
